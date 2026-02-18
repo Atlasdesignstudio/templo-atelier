@@ -601,6 +601,7 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
             title=task_title,
             priority="High",
             status="Todo",
+            due_date=datetime.utcnow() + timedelta(days=2)
         ))
 
     session.commit()
