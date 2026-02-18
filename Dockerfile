@@ -20,7 +20,7 @@ COPY . .
 
 # Persistence & Data
 RUN mkdir -p projects scenarios/intake_trigger storage
-VOLUME ["/app/projects", "/app/storage"]
+
 
 # Networking
 EXPOSE 8000
