@@ -14,7 +14,8 @@ from src.dashboard_api.agent_intel import (
     generate_strategic_directions_llm,
     expand_strategy_llm,
     generate_research_doc_content,
-    recommend_deliverables_llm
+    recommend_deliverables_llm,
+    recommend_initial_docs_llm
 )
 
 app = FastAPI(title="Templo Atelier API")
@@ -550,11 +551,24 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
     brief = project.client_brief or project.executive_summary or project.name
 
     # 1. Generate strategic directions
+    # 1. Generate strategic directions
     directions = generate_strategic_directions_llm(project.name, brief)
 
-    # 2. Generate initial research documents (Context for Decision)
-    for doc_type in ["market_landscape", "competitor_analysis"]:
+    # 2. Generate Initial Research Documents (Dynamic & Deep Search)
+    research_summary = ""
+    try:
+        doc_types = recommend_initial_docs_llm(project.name, brief)
+    except Exception as e:
+        print(f"Doc recommendation error: {e}")
+        doc_types = ["market_landscape", "competitor_analysis"]
+
+    for doc_type in doc_types:
+        # Generate content with Deep Search
         content = generate_research_doc_content(doc_type, project.name, brief, "Exploratory Phase")
+        
+        # Accumulate context for next agents
+        research_summary += f"\n--- {doc_type} ---\n{content}\n"
+        
         session.add(Document(
             project_id=project_id,
             name=doc_type.replace("_", " ").title(),
@@ -582,11 +596,15 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
     session.add(project)
 
     # 4. Generate Full Roadmap (Autonomous Agent)
-    # The Strategist analyzes the brief and creates a custom plan.
+    # The Strategist analyzes the brief AND the research to create a custom plan.
     try:
         roadmap_input = AgentInput(
             task_description="create_roadmap",
-            context_data={"project_name": project.name, "brief": brief}
+            context_data={
+                "project_name": project.name, 
+                "brief": brief,
+                "research_context": research_summary
+            }
         )
         # Autonomous Agent Call
         roadmap_output = studio.agents["strategist"].run(roadmap_input)

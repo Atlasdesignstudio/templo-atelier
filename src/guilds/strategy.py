@@ -27,7 +27,8 @@ class BrandStrategist(BaseAgent):
             )
 
         if input_data.task_description == "create_roadmap":
-            roadmap = generate_roadmap_llm(project_name, brief)
+            research_context = input_data.context_data.get("research_context", "")
+            roadmap = generate_roadmap_llm(project_name, brief, research_context)
             return AgentOutput(
                 content=json.dumps(roadmap, indent=2),
                 structured_data={"roadmap": roadmap},

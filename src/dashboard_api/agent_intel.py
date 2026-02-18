@@ -12,6 +12,35 @@ except ImportError:
 api_key = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY_FALLBACK
 client = genai.Client(api_key=api_key) if api_key else None
 
+def recommend_initial_docs_llm(project_name: str, brief: str) -> List[str]:
+    """
+    Identifies the 3-4 most critical research documents for the specific project.
+    """
+    if not client:
+        return ["market_landscape", "competitor_analysis"]
+
+    prompt = f"""
+    Act as a Lead Researcher.
+    Project: {project_name}
+    Brief: {brief}
+
+    Task: Identify the 3-4 most critical research documents we should generate immediately to understand the context.
+    Do NOT just say "Market Research". Be specific to the industry (e.g. "Footwear Trends 2024", "SaaS Pricing Audit").
+    
+    Return a JSON list of strings (titles).
+    Example: ["Competitor Analysis", "Cultural Trends Report", "Technical Feasibility Study"]
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        return json.loads(_clean_json(response.text))
+    except Exception as e:
+        print(f"LLM Error (Doc Recs): {e}")
+        return ["market_landscape", "competitor_analysis", "target_audience"]
+
 def _clean_json(text: str) -> str:
     """Extract JSON from markdown code blocks if present."""
     text = str(text).strip()
@@ -22,10 +51,10 @@ def _clean_json(text: str) -> str:
         text = text.removesuffix("```")
     return text.strip()
 
-def generate_roadmap_llm(project_name: str, brief: str) -> List[Dict[str, Any]]:
+def generate_roadmap_llm(project_name: str, brief: str, research_context: str = "") -> List[Dict[str, Any]]:
     """
     Generates a 4-phase project roadmap (Discovery, Strategy, Design, Production) 
-    with 20+ specific tasks tailored to the brief.
+    with 20+ specific tasks tailored to the brief and research findings.
     """
     if not client:
         return _fallback_roadmap()
@@ -37,6 +66,7 @@ def generate_roadmap_llm(project_name: str, brief: str) -> List[Dict[str, Any]]:
     Act as a Senior Project Manager & Strategist.
     Project: {project_name}
     Brief: {brief}
+    Research Insights: {research_context[:2000] if research_context else "N/A"}
 
     Task: Create a detailed, 4-phase project roadmap (Discovery, Strategy, Design, Production).
     
