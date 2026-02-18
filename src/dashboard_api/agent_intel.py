@@ -197,9 +197,14 @@ def generate_research_doc_content(doc_type: str, project_name: str, brief: str, 
     requested_prompt = prompts.get(doc_type, f"Write a {doc_type} for {project_name}")
 
     try:
+        # Enable Google Search Grounding for deep research
+        # This forces the model to use Google Search to find current info.
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=f"{requested_prompt}\nReturn ONLY clean HTML tags."
+            contents=f"{requested_prompt}\nReturn ONLY clean HTML tags.",
+            config={
+                'tools': [{'google_search': {}}]
+            }
         )
         return _clean_html(response.text)
     except Exception as e:
