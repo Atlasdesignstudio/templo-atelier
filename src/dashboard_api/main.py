@@ -577,6 +577,10 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
     )
     session.add(step)
 
+    # Update project status to notify user
+    project.review_status = "PENDING"
+    session.add(project)
+
     # 4. Add Phase 1 Tasks
     phase1_tasks = ["Phase 1: Review Market Analysis", "Phase 1: Select Strategic Direction"]
     for task_title in phase1_tasks:
@@ -987,8 +991,16 @@ Review the full selection below to approve or adjust."""
             )
             session.add(step)
             created.append(step)
+
+            # Update status for approval
+            if payload.chosen_option == "revise":
+                project.review_status = "REJECTED"
+            else:
+                project.review_status = "PENDING"
+            session.add(project)
+
         else:
-            # Rejected → ask for revisions
+            # Rejected/Revise → ask for revisions
             step = WorkflowStep(
                 project_id=project.id,
                 step_type="input_needed",
@@ -1001,9 +1013,15 @@ Review the full selection below to approve or adjust."""
             )
             session.add(step)
             created.append(step)
+            
+            project.review_status = "REJECTED"
+            session.add(project)
 
     elif resolved_step.step_type == "decision_gate" and resolved_step.title == "Deliverable Selection":
         # Founder confirmed deliverables → create them + budget summary
+        project.review_status = "APPROVED"
+        session.add(project)
+
         chosen = payload.chosen_option or ""
         custom_input = payload.input_text or ""
 
