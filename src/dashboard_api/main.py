@@ -552,50 +552,34 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
     # 1. Generate strategic directions
     directions = generate_strategic_directions_llm(project.name, brief)
 
-    # 2. Expand the first direction into a full strategy
-    chosen = directions[0] if directions else {"key": "A", "title": "Default", "description": brief}
-    strategy = expand_strategy_llm(project.name, brief, chosen)
-
-    # 3. Save strategy to project fields
-    project.strategy_json = json.dumps(strategy.get("pillars", []))
-    project.strategic_tensions = json.dumps(strategy.get("tensions", []))
-    project.design_principles = json.dumps(strategy.get("principles", []))
-    if strategy.get("positioning"):
-        project.executive_summary = strategy["positioning"]
-    project.health_score = 85
-    project.next_milestone = "Strategy Review"
-
-    # 4. Generate research documents
-    for doc_type in ["market_landscape", "competitor_analysis", "target_audience"]:
-        content = generate_research_doc_content(doc_type, project.name, brief, strategy.get("positioning", ""))
+    # 2. Generate initial research documents (Context for Decision)
+    for doc_type in ["market_landscape", "competitor_analysis"]:
+        content = generate_research_doc_content(doc_type, project.name, brief, "Exploratory Phase")
         session.add(Document(
             project_id=project_id,
             name=doc_type.replace("_", " ").title(),
             category="Research",
-            doc_type="text",
+            doc_type="html",
             content=content,
         ))
-
-    # 5. Add workflow milestone
-    session.add(WorkflowStep(
+    
+    # 3. Create Decision Gate Workflow Step
+    step = WorkflowStep(
         project_id=project_id,
-        step_type="milestone",
+        step_type="decision_gate",
         agent="Strategist",
-        title="AI Strategy Generated",
-        body=f"Strategic directions synthesized. Chosen: {chosen.get('title', 'N/A')}. Positioning: {strategy.get('positioning', 'N/A')}",
+        title="Strategic Direction",
+        body=f"Based on the brief — \"{brief}\" — I've analyzed the market positioning and competitive landscape. Here are 3 distinct strategic directions. Review the initial research documents in the 'Documents' tab, then choose the direction that best aligns with your vision.",
+        options_json=json.dumps(directions),
+        status="active",
         phase="strategy",
-        status="resolved",
-    ))
+        sort_order=1
+    )
+    session.add(step)
 
-    # 6. Add timeline log
-    session.add(AgentLog(
-        project_id=project_id,
-        agent_name="Strategist",
-        message=f"AI Strategy generated: {chosen.get('title', 'Strategy')} — {len(directions)} directions explored.",
-    ))
-
-    # 7. Add tasks for next steps
-    for task_title in ["Review AI Strategy Output", "Approve Brand Pillars", "Schedule Client Presentation"]:
+    # 4. Add Phase 1 Tasks
+    phase1_tasks = ["Phase 1: Review Market Analysis", "Phase 1: Select Strategic Direction"]
+    for task_title in phase1_tasks:
         session.add(GlobalTask(
             project_id=project_id,
             title=task_title,
@@ -604,9 +588,16 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
             due_date=datetime.utcnow() + timedelta(days=2)
         ))
 
+    # 5. Log Event
+    session.add(AgentLog(
+        project_id=project_id,
+        agent_name="Strategist",
+        message=f"Strategic analysis complete. {len(directions)} directions proposed for review.",
+    ))
+
     session.commit()
     session.refresh(project)
-    return {"status": "ok", "directions": directions, "strategy": strategy}
+    return {"status": "ok", "directions": directions, "next_step": "decision_gate"}
 
 
 @app.delete("/founder/project/{project_id}")
@@ -841,6 +832,28 @@ def generate_next_steps(resolved_step: WorkflowStep, project: Project, payload: 
         session.add(step)
         created.append(step)
 
+        # --- Add Phase 2 Tasks ---
+        phase2_tasks = ["Phase 2: Review Full Strategy", "Phase 2: Approve Brand Pillars"]
+        for task_title in phase2_tasks:
+            session.add(GlobalTask(
+                project_id=project.id,
+                title=task_title,
+                priority="High",
+                status="Todo",
+                due_date=datetime.utcnow() + timedelta(days=3)
+            ))
+
+        # --- Add Phase 2 Tasks ---
+        phase2_tasks = ["Phase 2: Review Full Strategy", "Phase 2: Approve Brand Pillars"]
+        for task_title in phase2_tasks:
+            session.add(GlobalTask(
+                project_id=project.id,
+                title=task_title,
+                priority="High",
+                status="Todo",
+                due_date=datetime.utcnow() + timedelta(days=3)
+            ))
+
 
 
     elif resolved_step.step_type == "approval_gate" and resolved_step.title == "Strategy Review":
@@ -880,17 +893,17 @@ def generate_next_steps(resolved_step: WorkflowStep, project: Project, payload: 
             # --- Director proposes BUDGET-AWARE deliverables ---
             budget: int = int(project.budget_cap or 0)
 
-            # Deliverable catalog with estimated costs
+            # Deliverable catalog with estimated costs, time, and justification (AUDIT TRAIL)
             catalog: list[dict[str, object]] = [
-                {"key": "brand_strategy", "title": "Brand Strategy Document", "cost": 800, "phase": "Foundation"},
-                {"key": "visual_brief", "title": "Visual Identity Brief", "cost": 600, "phase": "Foundation"},
-                {"key": "competitor_audit", "title": "Competitor Audit Report", "cost": 500, "phase": "Foundation"},
-                {"key": "logo_system", "title": "Logo & Identity System", "cost": 1500, "phase": "Design"},
-                {"key": "brand_guidelines", "title": "Brand Guidelines", "cost": 1000, "phase": "Design"},
-                {"key": "visual_templates", "title": "Key Visual Templates", "cost": 700, "phase": "Design"},
-                {"key": "website", "title": "Website Design & Development", "cost": 2500, "phase": "Production"},
-                {"key": "social_kit", "title": "Social Media Kit", "cost": 800, "phase": "Production"},
-                {"key": "launch_collateral", "title": "Launch Collateral", "cost": 600, "phase": "Production"},
+                {"key": "brand_strategy", "title": "Brand Strategy Document", "cost": 800, "phase": "Foundation", "time_est": "1 week", "justification": "Defines core DNA and market positioning."},
+                {"key": "visual_brief", "title": "Visual Identity Brief", "cost": 600, "phase": "Foundation", "time_est": "3 days", "justification": "Translates strategy into visual direction for designers."},
+                {"key": "competitor_audit", "title": "Competitor Audit Report", "cost": 500, "phase": "Foundation", "time_est": "4 days", "justification": "Identifies whitespace opportunities in the market."},
+                {"key": "logo_system", "title": "Logo & Identity System", "cost": 1500, "phase": "Design", "time_est": "2 weeks", "justification": "Core asset for brand recognition across all touchpoints."},
+                {"key": "brand_guidelines", "title": "Brand Guidelines", "cost": 1000, "phase": "Design", "time_est": "1 week", "justification": "Ensures consistency in future brand application."},
+                {"key": "visual_templates", "title": "Key Visual Templates", "cost": 700, "phase": "Design", "time_est": "1 week", "justification": "Ready-to-use assets for social and presentations."},
+                {"key": "website", "title": "Website Design & Development", "cost": 2500, "phase": "Production", "time_est": "3 weeks", "justification": "Primary digital storefront and conversion engine."},
+                {"key": "social_kit", "title": "Social Media Kit", "cost": 800, "phase": "Production", "time_est": "1 week", "justification": "Launch content to build initial traction."},
+                {"key": "launch_collateral", "title": "Launch Collateral", "cost": 600, "phase": "Production", "time_est": "1 week", "justification": "Physical/digital assets for launch event/campaign."},
             ]
 
             # Auto-select deliverables that fit the budget (using Director Agent)
@@ -940,11 +953,26 @@ def generate_next_steps(resolved_step: WorkflowStep, project: Project, payload: 
                 budget_line = "**Budget:** Not set — showing full recommended scope."
                 budget_note = "\n\n⚠️ No budget set. All deliverables are included. Set a budget in project settings to enable cost tracking."
 
-            deliverables_body = f"""Based on the approved strategy and a budget analysis, here are my recommended deliverables:
+            # Generate Audit Table
+            audit_table = "| Item | Cost | Time | Rationale |\n| :--- | :--- | :--- | :--- |\n"
+            for item in catalog:
+                if item.get("selected"):
+                    title = str(item.get("title", ""))
+                    cost = str(item.get("cost", 0))
+                    time = str(item.get("time_est", "-"))
+                    justif = str(item.get("justification", ""))
+                    audit_table += f"| **{title}** | ${cost} | {time} | {justif} |\n"
 
-{budget_line}{budget_note}
+            deliverables_body = f"""Based on the approved strategy and a budget analysis, here is the justified scope breakdown:
 
-Review the suggested deliverables below. Toggle any you don't need, or add custom deliverables the client has specifically requested."""
+{budget_line}
+
+### Recommended Scope Audit
+{audit_table}
+
+{budget_note}
+
+Review the full selection below to approve or adjust."""
 
             step = WorkflowStep(
                 project_id=project.id,
