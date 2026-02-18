@@ -369,7 +369,8 @@ async function loadDecisions(projectId) {
     const res = await fetch(`${API_BASE}/founder/project/${projectId}/workflow`);
     if (!res.ok) return;
     const data = await res.json();
-    const steps = (data.steps || []).filter(s =>
+    const allSteps = Array.isArray(data) ? data : (data.steps || []);
+    const steps = allSteps.filter(s =>
       ['decision_gate', 'approval_gate'].includes(s.step_type)
     );
     const el = document.getElementById('d-decisions-list');
