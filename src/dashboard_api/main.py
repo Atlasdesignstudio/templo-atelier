@@ -581,43 +581,44 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
     project.review_status = "PENDING"
     session.add(project)
 
-    # 4. Generate Full Roadmap (Discovery -> Strategy -> Design -> Production)
-    today = datetime.utcnow()
-    roadmap = [
-        # Phase 1: Discovery (Immediate)
-        {"title": "Phase 1: Review Market Analysis", "days": 1, "prio": "High"},
-        {"title": "Phase 1: Deep Dive Competitor Audit", "days": 2, "prio": "Normal"},
-        {"title": "Phase 1: Stakeholder Interviews", "days": 3, "prio": "Normal"},
-        {"title": "Phase 1: Select Strategic Direction", "days": 3, "prio": "High"},
+    # 4. Generate Full Roadmap (Autonomous Agent)
+    # The Strategist analyzes the brief and creates a custom plan.
+    try:
+        roadmap_input = AgentInput(
+            task_description="create_roadmap",
+            context_data={"project_name": project.name, "brief": brief}
+        )
+        # Autonomous Agent Call
+        roadmap_output = studio.agents["strategist"].run(roadmap_input)
+        roadmap = roadmap_output.structured_data.get("roadmap", [])
         
-        # Phase 2: Strategy (Next Week)
-        {"title": "Phase 2: Define Brand Pillars", "days": 5, "prio": "High"},
-        {"title": "Phase 2: Draft Positioning Statement", "days": 6, "prio": "High"},
-        {"title": "Phase 2: Establish Tone of Voice", "days": 7, "prio": "Normal"},
-        {"title": "Phase 2: Strategy Review & Approval", "days": 8, "prio": "High"},
-        
-        # Phase 3: Design (Weeks 2-3)
-        {"title": "Phase 3: Moodboard Exploration", "days": 10, "prio": "Normal"},
-        {"title": "Phase 3: Logo Concept Generation", "days": 12, "prio": "High"},
-        {"title": "Phase 3: Refine Identity System", "days": 14, "prio": "High"},
-        {"title": "Phase 3: Color Palette & Typography", "days": 15, "prio": "Normal"},
-        {"title": "Phase 3: Final Design Review", "days": 17, "prio": "High"},
-        
-        # Phase 4: Production (Weeks 3-4)
-        {"title": "Phase 4: Develop Brand Guidelines", "days": 20, "prio": "Normal"},
-        {"title": "Phase 4: Create Social Media Templates", "days": 22, "prio": "Normal"},
-        {"title": "Phase 4: Website Design & Dev", "days": 25, "prio": "High"},
-        {"title": "Phase 4: Export Final Assets", "days": 28, "prio": "High"},
-        {"title": "Phase 4: Launch Preparation", "days": 30, "prio": "High"},
-    ]
+        # Log the autonomous action
+        session.add(AgentLog(
+            project_id=project_id,
+            agent_name="Strategist",
+            message=f"Created custom project roadmap with {len(roadmap)} tasks based on brief.",
+        ))
+    except Exception as e:
+        print(f"Roadmap generation error: {e}")
+        # Use fallback if agent fails
+        from src.dashboard_api.agent_intel import _fallback_roadmap
+        roadmap = _fallback_roadmap()
 
+    # Create the tasks in DB
+    today = datetime.utcnow()
     for task in roadmap:
+        days_offset = 1
+        try:
+            days_offset = int(str(task.get("days", 1)))
+        except (ValueError, TypeError):
+            days_offset = 1
+
         session.add(GlobalTask(
             project_id=project_id,
-            title=str(task["title"]),
-            priority=str(task["prio"]),
+            title=str(task.get("title")),
+            priority=str(task.get("prio", "Normal")),
             status="Todo",
-            due_date=today + timedelta(days=int(str(task["days"])))
+            due_date=today + timedelta(days=days_offset)
         ))
 
     # 5. Log Event

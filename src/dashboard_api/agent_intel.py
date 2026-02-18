@@ -22,6 +22,63 @@ def _clean_json(text: str) -> str:
         text = text.removesuffix("```")
     return text.strip()
 
+def generate_roadmap_llm(project_name: str, brief: str) -> List[Dict[str, Any]]:
+    """
+    Generates a 4-phase project roadmap (Discovery, Strategy, Design, Production) 
+    with 20+ specific tasks tailored to the brief.
+    """
+    if not client:
+        return _fallback_roadmap()
+
+    # Enable Search Tool (Grounding) if available in this environment
+    # Note: genai SDK usage for tools varies by version. Using standard prompt engineering for specificity first.
+    
+    prompt = f"""
+    Act as a Senior Project Manager & Strategist.
+    Project: {project_name}
+    Brief: {brief}
+
+    Task: Create a detailed, 4-phase project roadmap (Discovery, Strategy, Design, Production).
+    
+    CRITICAL: 
+    - Do NOT use generic tasks like "Market Research" or "Design Logo".
+    - Be extremely specific to the industry and brief. 
+    - Example for a Coffee Shop: "Scout locations in high-foot-traffic hipster neighborhoods", "Taste test 5 bean varieties", "Design takeaway cup packaging".
+    - Example for a Tech SaaS: "Audit competitor API documentation", "Design user onboarding flow", "Stress test database schema".
+    
+    Generate exactly 20-25 tasks.
+    Return a JSON array of objects with:
+    - "title": Specific task name (e.g. "Conduct taste test with 50 locals")
+    - "phase": "Discovery", "Strategy", "Design", or "Production"
+    - "days": Integer (days from start, e.g. 1, 3, 10, 30). Space them out realistically over 4 weeks.
+    - "prio": "High" or "Normal"
+
+    Output JSON only.
+    """
+    
+    try:
+        # Use tools='google_search_retrieval' if we want grounding, 
+        # but for roadmap generation, pure reasoning is often better tailored than search results.
+        # We will key "Research" tasks to search later.
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        return json.loads(_clean_json(response.text))
+    except Exception as e:
+        print(f"LLM Error (Roadmap): {e}")
+        return _fallback_roadmap()
+
+def _fallback_roadmap():
+    return [
+        {"title": "Deep Dive Discovery Session", "phase": "Discovery", "days": 1, "prio": "High"},
+        {"title": "Competitor Audit", "phase": "Discovery", "days": 2, "prio": "Normal"},
+        {"title": "Define Brand Archetypes", "phase": "Strategy", "days": 5, "prio": "High"},
+        {"title": "Visual Identity Exploration", "phase": "Design", "days": 10, "prio": "High"},
+        {"title": "Finalize Brand Guidelines", "phase": "Production", "days": 20, "prio": "Normal"}
+    ]
+
 def generate_strategic_directions_llm(project_name: str, brief: str) -> List[Dict[str, str]]:
     """
     Generates 3 distinct strategic directions based on the project brief.

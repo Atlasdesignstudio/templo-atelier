@@ -2,7 +2,7 @@ from typing import List, Dict
 import json
 from src.operative_core.agent_base import BaseAgent, AgentInput, AgentOutput
 from src.dashboard_api.agent_intel import client, _clean_json
-from src.dashboard_api.agent_intel import generate_strategic_directions_llm, expand_strategy_llm
+from src.dashboard_api.agent_intel import generate_strategic_directions_llm, expand_strategy_llm, generate_roadmap_llm
 
 class BrandStrategist(BaseAgent):
     """
@@ -24,6 +24,14 @@ class BrandStrategist(BaseAgent):
                 content=json.dumps(directions, indent=2),
                 structured_data={"directions": directions},
                 confidence=0.85
+            )
+
+        if input_data.task_description == "create_roadmap":
+            roadmap = generate_roadmap_llm(project_name, brief)
+            return AgentOutput(
+                content=json.dumps(roadmap, indent=2),
+                structured_data={"roadmap": roadmap},
+                confidence=0.9
             )
 
         if input_data.task_description == "expand_strategy":
