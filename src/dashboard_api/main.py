@@ -581,15 +581,43 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
     project.review_status = "PENDING"
     session.add(project)
 
-    # 4. Add Phase 1 Tasks
-    phase1_tasks = ["Phase 1: Review Market Analysis", "Phase 1: Select Strategic Direction"]
-    for task_title in phase1_tasks:
+    # 4. Generate Full Roadmap (Discovery -> Strategy -> Design -> Production)
+    today = datetime.utcnow()
+    roadmap = [
+        # Phase 1: Discovery (Immediate)
+        {"title": "Phase 1: Review Market Analysis", "days": 1, "prio": "High"},
+        {"title": "Phase 1: Deep Dive Competitor Audit", "days": 2, "prio": "Normal"},
+        {"title": "Phase 1: Stakeholder Interviews", "days": 3, "prio": "Normal"},
+        {"title": "Phase 1: Select Strategic Direction", "days": 3, "prio": "High"},
+        
+        # Phase 2: Strategy (Next Week)
+        {"title": "Phase 2: Define Brand Pillars", "days": 5, "prio": "High"},
+        {"title": "Phase 2: Draft Positioning Statement", "days": 6, "prio": "High"},
+        {"title": "Phase 2: Establish Tone of Voice", "days": 7, "prio": "Normal"},
+        {"title": "Phase 2: Strategy Review & Approval", "days": 8, "prio": "High"},
+        
+        # Phase 3: Design (Weeks 2-3)
+        {"title": "Phase 3: Moodboard Exploration", "days": 10, "prio": "Normal"},
+        {"title": "Phase 3: Logo Concept Generation", "days": 12, "prio": "High"},
+        {"title": "Phase 3: Refine Identity System", "days": 14, "prio": "High"},
+        {"title": "Phase 3: Color Palette & Typography", "days": 15, "prio": "Normal"},
+        {"title": "Phase 3: Final Design Review", "days": 17, "prio": "High"},
+        
+        # Phase 4: Production (Weeks 3-4)
+        {"title": "Phase 4: Develop Brand Guidelines", "days": 20, "prio": "Normal"},
+        {"title": "Phase 4: Create Social Media Templates", "days": 22, "prio": "Normal"},
+        {"title": "Phase 4: Website Design & Dev", "days": 25, "prio": "High"},
+        {"title": "Phase 4: Export Final Assets", "days": 28, "prio": "High"},
+        {"title": "Phase 4: Launch Preparation", "days": 30, "prio": "High"},
+    ]
+
+    for task in roadmap:
         session.add(GlobalTask(
             project_id=project_id,
-            title=task_title,
-            priority="High",
+            title=str(task["title"]),
+            priority=str(task["prio"]),
             status="Todo",
-            due_date=datetime.utcnow() + timedelta(days=2)
+            due_date=today + timedelta(days=int(str(task["days"])))
         ))
 
     # 5. Log Event

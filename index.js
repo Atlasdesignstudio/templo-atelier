@@ -374,15 +374,66 @@ async function loadDecisions(projectId) {
       ['decision_gate', 'approval_gate'].includes(s.step_type)
     );
     const el = document.getElementById('d-decisions-list');
-    if (steps.length === 0) return;
-    el.innerHTML = steps.map(s => `
-      <div class="decision-item">
-        <div class="decision-agent">${escHtml(s.agent)}</div>
+    if (steps.length === 0) {
+      el.innerHTML = '<div class="empty-state"><p>No active decisions pending.</p></div>';
+      return;
+    }
+
+    el.innerHTML = steps.map(s => {
+      const isResolved = s.status === 'resolved';
+      const optionsHtml = (s.options || []).map(opt => `
+        <button class="btn-decision" onclick="makeDecision(${s.id}, '${opt.key}')" ${isResolved ? 'disabled' : ''}>
+          ${escHtml(opt.title)}
+        </button>
+      `).join('');
+
+      return `
+      <div class="decision-item ${s.status}">
+        <div class="decision-header">
+            <span class="decision-agent">${escHtml(s.agent)}</span>
+            <span class="decision-status ${s.status}">${s.status}</span>
+        </div>
         <div class="decision-title">${escHtml(s.title)}</div>
-        <div class="decision-status ${s.status}">${s.status}${s.chosen_option ? ': ' + escHtml(s.chosen_option) : ''}</div>
+        <div class="decision-body markdown-body">${marked.parse(s.body || '')}</div>
+        
+        ${!isResolved ? `<div class="decision-actions">${optionsHtml}</div>` : ''}
+        ${isResolved ? `<div class="decision-result">Selected: <strong>${s.chosen_option || 'Complete'}</strong></div>` : ''}
       </div>
-    `).join('');
+    `}).join('');
   } catch (e) { console.warn('loadDecisions:', e.message); }
+}
+
+async function makeDecision(stepId, optionKey) {
+  if (!currentProject) return;
+  if (!confirm(`Confirm selection? This will trigger the next phase of work.`)) return;
+
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.textContent = 'Processing...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/founder/project/${currentProject.id}/workflow/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step_id: stepId, action: optionKey })
+    });
+
+    if (res.ok) {
+      // Refresh all data
+      loadProjectDetail(currentProject);
+      // Also refresh sidebar notifications if any?
+    } else {
+      alert('Failed to record decision. Please try again.');
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  } catch (e) {
+    console.error(e);
+    alert('Network error');
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
 }
 
 async function loadTimeline(projectId) {
