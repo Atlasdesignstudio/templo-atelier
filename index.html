@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Templo Atelier | Studio OS</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+
+  <aside>
+    <div class="logo-container">
+      <div class="logo">Templo Atelier</div>
+      <div class="logo-sub">Studio OS v.Final</div>
+    </div>
+    <div class="nav-divider"></div>
+
+    <!-- Sidebar nav updates dynamically based on level -->
+    <nav id="sidebar-nav">
+      <div class="nav-item active" onclick="navigateTo('categories')">
+        <span class="nav-icon">⊞</span> Categories
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span>All Systems Online</span>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Breadcrumb -->
+    <div id="breadcrumb" class="breadcrumb">
+      <span class="breadcrumb-item active">Categories</span>
+    </div>
+
+    <!-- ===== LEVEL 1: Categories ===== -->
+    <div id="level-categories" class="level-container">
+      <div class="level-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <h1>Service Categories</h1>
+            <p class="level-subtitle">Select a category to view its projects</p>
+          </div>
+          <button class="btn btn-primary" onclick="openNewProjectModal()">+ New Project</button>
+        </div>
+      </div>
+      <div id="categories-grid" class="categories-grid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- ===== LEVEL 2: Projects in Category ===== -->
+    <div id="level-projects" class="level-container" style="display:none;">
+      <div class="level-header">
+        <h1 id="category-title">Projects</h1>
+        <p id="category-subtitle" class="level-subtitle">All projects in this category</p>
+      </div>
+      <div id="projects-board" class="projects-board">
+        <!-- Status columns populated by JS -->
+      </div>
+    </div>
+
+    <!-- ===== LEVEL 3: Project Detail ===== -->
+    <div id="level-detail" class="level-container" style="display:none;">
+      <header id="detail-header" class="detail-header">
+        <div class="project-title">
+          <h1 id="detail-project-name">Project</h1>
+          <span id="detail-project-status" class="status-badge status-pending">—</span>
+          <span id="detail-project-client" class="client-badge"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button id="btn-export" class="btn btn-secondary" onclick="exportProject()" style="display:none;">📄
+            Export</button>
+          <button id="btn-run-ai" class="btn btn-accent" onclick="runAIStrategy()" style="display:none;">⚡ Run AI
+            Strategy</button>
+          <div class="pulse-container">
+            <span class="pulse-value" id="detail-health-score">—</span>
+            <span class="pulse-label">Health Score</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Detail Sub-Tabs -->
+      <div class="detail-tabs">
+        <button class="detail-tab active" onclick="switchDetailTab('overview')">Overview</button>
+        <button class="detail-tab" onclick="switchDetailTab('documents')">Documents</button>
+        <button class="detail-tab" onclick="switchDetailTab('tasks')">Tasks</button>
+        <button class="detail-tab" onclick="switchDetailTab('decisions')">Decisions</button>
+        <button class="detail-tab" onclick="switchDetailTab('timeline')">Timeline</button>
+      </div>
+
+      <!-- Detail Sub-Views -->
+      <div id="detail-overview" class="detail-view active">
+        <div class="detail-grid">
+          <div class="card wide">
+            <h3>Vision & Opportunity</h3>
+            <p id="d-executive-summary" class="vision-text">Awaiting synthesis…</p>
+          </div>
+          <div class="card">
+            <h3>Active Risks</h3>
+            <div id="d-risk-list">
+              <div class="empty-state">
+                <div class="empty-icon">⚠</div>
+                <p>No risks detected</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Strategic Pillars</h3>
+            <div id="d-strategy-pillars">
+              <div class="empty-state">
+                <div class="empty-icon">◆</div>
+                <p>Strategy pending…</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Budget Snapshot</h3>
+            <div id="d-budget-snapshot">
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="color:var(--text-secondary); font-size:0.85rem;">Cap</span>
+                <span id="d-budget-cap" style="font-weight:600;">$—</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="color:var(--text-secondary); font-size:0.85rem;">Spent</span>
+                <span id="d-budget-spent" style="font-weight:600;">$—</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="color:var(--text-secondary); font-size:0.85rem;">Remaining</span>
+                <span id="d-budget-remaining" style="font-weight:600; color:var(--accent-emerald);">$—</span>
+              </div>
+              <div class="budget-bar-container">
+                <div id="d-budget-bar" class="budget-bar-fill" style="width:0%;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Next Milestone</h3>
+            <div id="d-next-milestone" class="milestone-display">
+              <div class="empty-state">
+                <div class="empty-icon">⏱</div>
+                <p>No milestone set</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Blockers</h3>
+            <div id="d-blockers">
+              <div class="empty-state">
+                <div class="empty-icon">✓</div>
+                <p>No blockers</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="detail-documents" class="detail-view" style="display:none;">
+        <div class="card wide">
+          <h2>Documents</h2>
+          <div id="d-documents-list">
+            <div class="empty-state">
+              <div class="empty-icon">📄</div>
+              <p>No documents generated yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="detail-tasks" class="detail-view" style="display:none;">
+        <div class="card wide">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="margin:0;">Tasks & Workflow</h2>
+            <button class="btn btn-primary btn-sm" onclick="openAddTaskModal()">+ Add Task</button>
+          </div>
+          <div id="d-tasks-list">
+            <div class="empty-state">
+              <div class="empty-icon">☐</div>
+              <p>No tasks yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="detail-decisions" class="detail-view" style="display:none;">
+        <div class="card wide">
+          <h2>Decisions & Approvals</h2>
+          <div id="d-decisions-list">
+            <div class="empty-state">
+              <div class="empty-icon">⚖</div>
+              <p>No decision gates yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="detail-timeline" class="detail-view" style="display:none;">
+        <div class="card wide">
+          <h2>Activity Timeline</h2>
+          <div id="d-timeline-list">
+            <div class="empty-state">
+              <div class="empty-icon">◷</div>
+              <p>No activity recorded yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ===== New Project Modal ===== -->
+  <div id="new-project-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Create New Project</h2>
+        <button class="modal-close" onclick="closeNewProjectModal()">✕</button>
+      </div>
+      <form id="new-project-form" onsubmit="handleNewProject(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="np-name">Project Name *</label>
+            <input type="text" id="np-name" required placeholder="e.g. Atlas Launch">
+          </div>
+          <div class="form-group">
+            <label for="np-category">Category</label>
+            <select id="np-category">
+              <option value="Brand Identity">Brand Identity</option>
+              <option value="Web Design">Web Design</option>
+              <option value="Packaging">Packaging</option>
+              <option value="Product Design">Product Design</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="np-client">Client Name</label>
+            <input type="text" id="np-client" placeholder="e.g. Acme Corp">
+          </div>
+          <div class="form-group">
+            <label for="np-budget">Budget Cap ($)</label>
+            <input type="number" id="np-budget" value="10000" min="0" step="500">
+          </div>
+          <div class="form-group">
+            <label for="np-stage">Starting Stage</label>
+            <select id="np-stage">
+              <option value="Intake">Intake</option>
+              <option value="Strategy" selected>Strategy</option>
+              <option value="Design">Design</option>
+              <option value="Delivery">Delivery</option>
+            </select>
+          </div>
+          <div class="form-group wide">
+            <label for="np-brief">Client Brief</label>
+            <textarea id="np-brief" rows="4"
+              placeholder="Describe the project scope, goals, and target audience…"></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeNewProjectModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="np-submit-btn">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== AI Loading Overlay ===== -->
+  <div id="ai-loading-overlay" class="modal-overlay" style="display:none;">
+    <div class="ai-loading-card">
+      <div class="ai-spinner"></div>
+      <h3>Running AI Strategy</h3>
+      <p id="ai-loading-msg">Analyzing brief and generating strategic directions…</p>
+    </div>
+  </div>
+
+  <!-- ===== Document Viewer/Editor Modal ===== -->
+  <div id="doc-viewer-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <div>
+          <h2 id="doc-viewer-title">Document</h2>
+          <span id="doc-viewer-category" class="doc-category-badge"></span>
+        </div>
+        <button class="modal-close" onclick="closeDocViewer()">✕</button>
+      </div>
+      <div id="doc-viewer-body" class="doc-editor-body" contenteditable="true"></div>
+      <div class="modal-actions">
+        <span id="doc-viewer-version" style="font-size:0.75rem;color:var(--text-tertiary);">v1</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="closeDocViewer()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveDocument()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Add Task Modal ===== -->
+  <div id="add-task-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2>Add Task</h2>
+        <button class="modal-close" onclick="closeAddTaskModal()">✕</button>
+      </div>
+      <form id="add-task-form" onsubmit="handleAddTask(event)">
+        <div class="form-group">
+          <label for="task-title">Task Title *</label>
+          <input type="text" id="task-title" required placeholder="e.g. Review brand concepts">
+        </div>
+        <div class="form-group">
+          <label for="task-priority">Priority</label>
+          <select id="task-priority">
+            <option value="Low">Low</option>
+            <option value="Normal" selected>Normal</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeAddTaskModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+
+</html>

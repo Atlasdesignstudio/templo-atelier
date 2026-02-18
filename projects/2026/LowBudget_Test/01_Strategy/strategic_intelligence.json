@@ -1,0 +1,27 @@
+{
+    "project_truth": "Mock: Wellness luxury furniture.",
+    "white_space_map": "Mock: High-end sustainable lounge market.",
+    "strategic_guardrails": [
+        "Mock: Focus on organic curves",
+        "Mock: Avoid industrial textures"
+    ],
+    "design_principles": [
+        "Elegance",
+        "Wellness",
+        "Nature"
+    ],
+    "tone_of_voice_boundaries": [
+        "Calm",
+        "Sophisticated"
+    ],
+    "what_not_to_do": [
+        "No loud colors",
+        "No synthetic materials"
+    ],
+    "decision_criteria": [
+        "Does it evoke serenity?"
+    ],
+    "exploration_prompts": [
+        "Sketch 3 modular lounge options"
+    ]
+}

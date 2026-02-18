@@ -1,0 +1,11 @@
+{
+    "search_path": [
+        ".",
+        "src",
+        "/Users/mathiasmeneses/.gemini/antigravity/scratch/venv/lib/python3.13/site-packages"
+    ],
+    "source_directories": ["."],
+    "venv": "/Users/mathiasmeneses/.gemini/antigravity/scratch/venv"
+}
+
+

@@ -1,0 +1,14 @@
+services:
+  studio-os:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+      - ./projects:/app/projects
+      - ./src:/app/src
+      - ./studio_os:/app/studio_os
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+    restart: unless-stopped

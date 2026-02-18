@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlmodel
+langgraph
+langchain
+langchain-openai
+langchain-community
+pydantic
+sqlalchemy
+langchain-google-genai
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2

@@ -1,0 +1,9 @@
+{
+    "project_id": 7,
+    "total_quote": 1500.0,
+    "margin_percent": 95.0,
+    "services": {
+        "Web UX Design": 1200.0,
+        "Market Intelligence Audit": 300.0
+    }
+}

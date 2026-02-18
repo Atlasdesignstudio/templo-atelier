@@ -1,0 +1,29 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# --- JavaScript/Node (Dashboard) ---
+node_modules/
+dist/
+.next/
+out/
+build/
+.DS_Store
+
+# --- Antigravity Studio Specific ---
+.antigravity/cache/
+*.log
+storage/studio.db
+storage/studio.db-shm
+storage/studio.db-wal
+!storage/.keep
+studio.db
+scenarios/intake_trigger/*
+!scenarios/intake_trigger/.keep
+
+# --- IDEs ---
+.vscode/
+.idea/
