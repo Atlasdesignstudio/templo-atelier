@@ -51,36 +51,46 @@ def _clean_json(text: str) -> str:
         text = text.removesuffix("```")
     return text.strip()
 
-def generate_roadmap_llm(project_name: str, brief: str, research_context: str = "") -> List[Dict[str, Any]]:
+def generate_roadmap_llm(project_name: str, brief: str, research_context: str = "", category: str = "Brand Identity") -> List[Dict[str, Any]]:
     """
-    Generates a 4-phase project roadmap (Discovery, Strategy, Design, Production) 
-    with 20+ specific tasks tailored to the brief and research findings.
+    Generates a 4-phase project roadmap tailored to the specific category methodology.
     """
     if not client:
         return _fallback_roadmap()
 
     # Enable Search Tool (Grounding) if available in this environment
-    # Note: genai SDK usage for tools varies by version. Using standard prompt engineering for specificity first.
     
+    context_str = (research_context or "")
+    if len(context_str) > 2000:
+        context_str = context_str[:2000] # type: ignore
+
+    methodology = "standard project management"
+    if "Brand" in category:
+        methodology = "Brand Key or Strategic Pyramid"
+    elif "Web" in category or "Product" in category:
+        methodology = "Double Diamond (Discover, Define, Develop, Deliver)"
+    elif "Social" in category:
+        methodology = "Content Pillar & Calendar Strategy"
+
     prompt = f"""
-    Act as a Senior Project Manager & Strategist.
+    Act as a Senior Project Manager specializing in {category}.
     Project: {project_name}
     Brief: {brief}
-    Research Insights: {research_context[:2000] if research_context else "N/A"}
+    Research Insights: {context_str}
 
-    Task: Create a detailed, 4-phase project roadmap (Discovery, Strategy, Design, Production).
+    Task: Create a detailed, 4-phase project roadmap using the {methodology} methodology.
     
     CRITICAL: 
-    - Do NOT use generic tasks like "Market Research" or "Design Logo".
-    - Be extremely specific to the industry and brief. 
-    - Example for a Coffee Shop: "Scout locations in high-foot-traffic hipster neighborhoods", "Taste test 5 bean varieties", "Design takeaway cup packaging".
-    - Example for a Tech SaaS: "Audit competitor API documentation", "Design user onboarding flow", "Stress test database schema".
+    - Do NOT use generic tasks like "Market Research".
+    - Be extremely specific to the {category} industry.
+    - Example for Brand Identity: "Facilitate Brand Archetype Workshop", "Draft Brand Manifesto", "Design Primary Logo System".
+    - Example for Web Design: "Create Wireframes for Homepage", "Define CSS Variable System", "Conduct A/B Testing on Hero Section".
     
     Generate exactly 20-25 tasks.
     Return a JSON array of objects with:
-    - "title": Specific task name (e.g. "Conduct taste test with 50 locals")
+    - "title": Specific task name
     - "phase": "Discovery", "Strategy", "Design", or "Production"
-    - "days": Integer (days from start, e.g. 1, 3, 10, 30). Space them out realistically over 4 weeks.
+    - "days": Integer (days from start).
     - "prio": "High" or "Normal"
 
     Output JSON only.
@@ -309,3 +319,38 @@ def _fallback_deliverables(budget: int, all_deliverables: List[Dict]) -> List[st
             selected.append(str(d.get("key", "")))
             r_val = _safe_sub(r_val, c_val)
     return selected
+
+def _safe_sub(a: int, b: int) -> int:
+    return a - b
+
+def execute_task_llm(task_title: str, project_name: str, brief: str, category: str) -> str:
+    """
+    Simulates the execution of a task by an AI agent.
+    Generates the actual deliverable content or a status report.
+    """
+    if not client:
+        return "<p>AI Execution Unavailable. Task marked done manually.</p>"
+
+    prompt = f"""
+    Act as a professional in {category}.
+    Project: {project_name}
+    Brief: {brief}
+    
+    You are executing the task: "{task_title}".
+    
+    Produce the output for this task. 
+    If it's a design task (e.g. "Design Logo"), describe the visual concepts in detail.
+    If it's a strategy task, write the strategy.
+    
+    Format the output as clean HTML (use <h3>, <p>, <ul>, <strong>).
+    Keep it concise but valuable (approx 200-300 words).
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        return _clean_html(response.text)
+    except Exception as e:
+        return f"<p>Error executing task: {e}</p>"

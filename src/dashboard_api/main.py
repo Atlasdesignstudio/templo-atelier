@@ -15,7 +15,8 @@ from src.dashboard_api.agent_intel import (
     expand_strategy_llm,
     generate_research_doc_content,
     recommend_deliverables_llm,
-    recommend_initial_docs_llm
+    recommend_initial_docs_llm,
+    execute_task_llm
 )
 
 app = FastAPI(title="Templo Atelier API")
@@ -603,55 +604,95 @@ def run_strategy(project_id: int, session: Session = Depends(get_session)):
             context_data={
                 "project_name": project.name, 
                 "brief": brief,
-                "research_context": research_summary
+                "research_context": research_summary,
+                "category": project.category or "Brand Identity"
             }
         )
         # Autonomous Agent Call
         roadmap_output = studio.agents["strategist"].run(roadmap_input)
         roadmap = roadmap_output.structured_data.get("roadmap", [])
-        
-        # Log the autonomous action
-        session.add(AgentLog(
-            project_id=project_id,
-            agent_name="Strategist",
-            message=f"Created custom project roadmap with {len(roadmap)} tasks based on brief.",
-        ))
     except Exception as e:
         print(f"Roadmap generation error: {e}")
-        # Use fallback if agent fails
-        from src.dashboard_api.agent_intel import _fallback_roadmap
-        roadmap = _fallback_roadmap()
+        roadmap = []
 
-    # Create the tasks in DB
-    today = datetime.utcnow()
-    for task in roadmap:
-        days_offset = 1
-        try:
-            days_offset = int(str(task.get("days", 1)))
-        except (ValueError, TypeError):
-            days_offset = 1
-
+    # 5. Populate Tasks from Roadmap
+    for task_data in roadmap:
         session.add(GlobalTask(
             project_id=project_id,
-            title=str(task.get("title")),
-            priority=str(task.get("prio", "Normal")),
+            title=task_data.get("title", "Untitled Task"),
+            priority=task_data.get("prio", "Normal"),
             status="Todo",
-            due_date=today + timedelta(days=days_offset)
+            due_date=datetime.utcnow() + timedelta(days=task_data.get("days", 1))
         ))
+    
+    session.add(project)
+    session.commit()
+    
+    return {"status": "started", "project": project.name, "category": project.category}
 
-    # 5. Log Event
-    session.add(AgentLog(
+@app.post("/api/projects/{project_id}/autonomous_loop")
+def run_autonomous_loop(project_id: int, session: Session = Depends(get_session)):
+    """
+    Simulates the 'Working Loop'. 
+    Finds the next TODO task, executes it using an Agent (LLM), and logs the result.
+    """
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Find next todo task
+    next_task = session.exec(
+        select(GlobalTask)
+        .where(GlobalTask.project_id == project_id, GlobalTask.status == "Todo")
+        .order_by(GlobalTask.id)
+    ).first()
+
+    if not next_task:
+        return {"status": "idle", "message": "No pending tasks found."}
+
+    # Execute Task
+    output_html = execute_task_llm(
+        task_title=next_task.title,
+        project_name=project.name,
+        brief=project.client_brief or "",
+        category=project.category or "Brand Identity"
+    )
+
+    # Log the work
+    log_entry = AgentLog(
         project_id=project_id,
-        agent_name="Strategist",
-        message=f"Strategic analysis complete. {len(directions)} directions proposed for review.",
+        agent_name="Autonomous Agent",
+        message=f"Completed task: {next_task.title}",
+        severity="INFO"
+    )
+    session.add(log_entry)
+
+    # Save output as a Document (Proof of Work)
+    # We create a specific document for this task output
+    doc_name = f"Output: {next_task.title}"[:50] # type: ignore
+    session.add(Document(
+        project_id=project_id,
+        name=doc_name,
+        category="Deliverables",
+        doc_type="html",
+        content=output_html
     ))
 
+    # Mark task as Done
+    next_task.status = "Done"
+    session.add(next_task)
+    
     session.commit()
-    session.refresh(project)
-    return {"status": "ok", "directions": directions, "next_step": "decision_gate"}
+    
+    return {
+        "status": "worked",
+        "task": next_task.title,
+        "output_preview": output_html[:100]
+    }
 
 
-@app.delete("/founder/project/{project_id}")
+
+@app.delete("/projects/{project_id}")
 def delete_project(project_id: int, session: Session = Depends(get_session)):
     """Delete a project and all associated data."""
     project = session.get(Project, project_id)
@@ -976,7 +1017,9 @@ def generate_next_steps(resolved_step: WorkflowStep, project: Project, payload: 
             for item in catalog:
                 cost = int(item.get("cost", 0))  # type: ignore[arg-type]
                 # If LLM recommended it, try to select it. Or if budget allows and we are in fallback mode.
-                is_recommended = str(item.get("key")) in recommended_keys
+                is_recommended = False
+                if isinstance(recommended_keys, list):
+                    is_recommended = str(item.get("key")) in recommended_keys
                 
                 # Logic: If recommended and fits budget, select it.
                 # If budget is 0, select everything recommended? Or just let user decide.

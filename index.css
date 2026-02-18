@@ -859,6 +859,27 @@ main {
   cursor: not-allowed;
 }
 
+.btn-danger {
+  background: var(--bg-secondary);
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red-light);
+}
+
+.btn-danger:hover {
+  background: var(--accent-red-light);
+}
+
+.btn-auto {
+  background: var(--accent-green-light);
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green-light);
+}
+
+.btn-auto:hover {
+  background: var(--accent-green-light);
+  border-color: var(--accent-green);
+}
+
 /* ===== Modal ===== */
 .modal-overlay {
   position: fixed;

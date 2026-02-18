@@ -239,6 +239,10 @@ function loadProjectDetail(project) {
   if (aiBtn) aiBtn.style.display = 'inline-flex';
   const exportBtn = document.getElementById('btn-export');
   if (exportBtn) exportBtn.style.display = 'inline-flex';
+  const autoBtn = document.getElementById('btn-auto-loop');
+  if (autoBtn) autoBtn.style.display = 'inline-flex';
+  const deleteBtn = document.getElementById('btn-delete-project');
+  if (deleteBtn) deleteBtn.style.display = 'inline-flex';
 
   // Overview sub-tab
   renderDetailOverview(project);
@@ -606,6 +610,71 @@ async function runAIStrategy() {
     alert('AI Strategy generation failed: ' + e.message);
   } finally {
     aiBtn.disabled = false;
+  }
+}
+
+// ===== Autonomous Loop Runner =====
+async function runAutonomousLoop() {
+  if (!currentProject || !currentProject.id) return;
+
+  const overlay = document.getElementById('ai-loading-overlay');
+  const autoBtn = document.getElementById('btn-auto-loop');
+  overlay.style.display = 'flex';
+  autoBtn.disabled = true;
+
+  try {
+    document.getElementById('ai-loading-msg').textContent = 'AI Agent is executing the next project task...';
+
+    const res = await fetch(`${API_BASE}/api/projects/${currentProject.id}/autonomous_loop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+
+    if (result.status === 'worked') {
+      document.getElementById('ai-loading-msg').textContent = `Task "${result.task}" completed!`;
+      // Refresh project data
+      await loadProjectDetail(currentProject);
+    } else {
+      alert(result.message || 'No pending tasks found.');
+    }
+
+    setTimeout(() => { overlay.style.display = 'none'; }, 1000);
+  } catch (e) {
+    console.error('Autonomous loop failed:', e);
+    overlay.style.display = 'none';
+    alert('Autonomous loop failed: ' + e.message);
+  } finally {
+    autoBtn.disabled = false;
+  }
+}
+
+// ===== Project Deletion =====
+async function deleteCurrentProject() {
+  if (!currentProject || !currentProject.id) return;
+  if (!confirm(`Are you absolutely sure you want to delete "${currentProject.name}"? This action cannot be undone.`)) return;
+
+  const deleteBtn = document.getElementById('btn-delete-project');
+  deleteBtn.disabled = true;
+  deleteBtn.textContent = 'Deleting...';
+
+  try {
+    const res = await fetch(`${API_BASE}/projects/${currentProject.id}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // Navigate back to categories level
+    navigateTo('categories');
+  } catch (e) {
+    console.error('Delete project failed:', e);
+    alert('Failed to delete project: ' + e.message);
+  } finally {
+    deleteBtn.disabled = false;
+    deleteBtn.textContent = '🗑 Delete';
   }
 }
 
